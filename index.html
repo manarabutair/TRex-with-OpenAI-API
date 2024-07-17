@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Visualizer</title>
+    <style>
+        body {
+            background-color: #c1defd;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        textarea {
+            width: 80%;
+            height: 150px;
+            margin: 20px 0;
+            font-size: 16px;
+            border-radius: 15px;
+            padding: 10px;
+            border: 2px solid #000;
+        }
+        .variable-box, .array-box {
+            border: 2px solid #000;
+            background-color: rgb(252, 255, 153);
+            padding: 10px;
+            margin: 5px;
+            display: inline-block;
+            min-width: 50px;
+            border-radius: 15px;
+        }
+        #visualization-container {
+            margin-top: 20px;
+        }
+        #compiler-output {
+            margin-top: 20px;
+            white-space: pre-wrap;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background-color: #f8f8f8;
+            color: #333;
+        }
+        .green-box {
+            border: 2px solid #000;
+            background-color: rgb(252, 255, 153);
+            padding: 10px;
+            margin: 5px;
+            display: inline-block;
+            min-width: 50px;
+            border-radius: 15px;
+        }
+        .triangle-right {
+            width: 0;
+            height: 0;
+            border-top: 50px solid transparent;
+            border-bottom: 50px solid transparent;
+            border-left: 100px solid blue;
+        }
+    </style>
+</head>
+<body>
+    <h1><p style="font-family: Consolas; font-size: 32px; font-style: Bold; font-weight: bold">
+        TRex
+    </p>
+    <p style="font-family: Consolas; font-size: 20px; font-style: italic; font-weight: normal; margin-top: -15px;">
+        Realtime variable tracking
+    </p></h1>
+
+    <!-- <textarea id="code-input" placeholder="Enter your C++ code here..."></textarea>
+    <br>
+    <button onclick="processCode()">Visualize and Compile</button> -->
+    <textarea id="code-input" placeholder="Enter your C++ code here..." oninput="processCode()"></textarea>
+    <div id="visualization-container"></div>
+    <div id="compiler-output"></div>
+
+    <script>
+        // Function to clear outputs when the page loads
+        function clearOutputsOnLoad() {
+            document.getElementById('visualization-container').innerHTML = '';
+            document.getElementById('compiler-output').textContent = '';
+        }
+
+        // Clear outputs on page load
+        window.onload = clearOutputsOnLoad;
+
+        async function processCode() {
+            const code = document.getElementById('code-input').value;
+
+            try {
+                // Clear previous outputs
+                clearOutputsOnLoad();
+
+                // Asynchronously send requests for visualization and compilation
+                const compilerOutput = await sendToCompiler(code);
+
+                // Display compiler output
+                if (compilerOutput.includes('error')){
+                    displayCompilerOutput(compilerOutput);
+                }
+
+                // Only visualize code if there are no compiler errors
+                if (!compilerOutput.includes('Compilation error') && !compilerOutput.includes('Runtime error')) {
+                    const visualization = await sendToChatGPT(code);
+                    visualizeCode(visualization);
+                }
+            } catch (error) {
+                console.error('Error processing code:', error);
+            }
+        }
+
+        async function sendToChatGPT(code) {
+            const response = await fetch('/visualize', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ code })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch visualization');
+            }
+
+            const data = await response.json();
+            return data.code;
+        }
+
+        async function sendToCompiler(code) {
+            const response = await fetch('/compile', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ code })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to compile code');
+            }
+
+            const data = await response.json();
+            console.log('Compiler Response:', data); // Log the entire response
+            return data.output;
+        }
+
+        function visualizeCode(visualization) {
+            const container = document.getElementById('visualization-container');
+
+            // Strip out ```javascript and ```
+            visualization = visualization.replace(/```javascript/g, '').replace(/```/g, '');
+            
+            
+            // Clear previous visualizations
+            container.innerHTML=''; 
+
+            // Create a new script element and add the visualization code
+            const script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.textContent = visualization;
+
+            // Append the script to the visualization containe
+            // script.textContent=`document.getElementById('visualization-container').innerHTML+=<div class='triangle-right'></div>`;
+            container.appendChild(script);                                                                    
+            console.log('Visualization script appended and executed:', script.textContent);
+
+
+            }
+
+
+        function displayCompilerOutput(output) {
+            const container = document.getElementById('compiler-output');
+            container.textContent = output; // Display the output, including errors
+        }
+    </script>
+</body>
+</html>
